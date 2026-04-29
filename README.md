@@ -2,6 +2,8 @@
 
 [中文 README](README_zh.md)
 
+Deployment integration code is in [ccrpRepo/wbc_fsm](https://github.com/ccrpRepo/wbc_fsm), under `MJAmp State`.
+
 G1 AMP motion control project built on top of mjlab + rsl_rl.
 
 Key features of this repository:

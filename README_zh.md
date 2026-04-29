@@ -2,6 +2,8 @@
 
 [English README](README.md)
 
+部署集成代码位于 [ccrpRepo/wbc_fsm](https://github.com/ccrpRepo/wbc_fsm) 项目中的 `MJAmp State`。
+
 基于 mjlab + rsl_rl 的 G1 AMP 运动控制项目。
 
 本项目的核心特点是：
