@@ -18,5 +18,6 @@
 from setuptools import find_packages
 from distutils.core import setup
 
-setup(name='rsl_rl'
+setup(name='rsl_rl',
+      packages=find_packages(),
 )

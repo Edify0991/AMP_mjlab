@@ -390,13 +390,13 @@ def run_sim(
       reset_flag,
     ) = motion.get_next_state()
 
-    root_states = robot.data.default_root_state.clone()
-    root_states[:, 0:3] = motion_base_pos
-    root_states[:, :2] += scene.env_origins[:, :2]
-    root_states[:, 3:7] = motion_base_rot
-    root_states[:, 7:10] = motion_base_lin_vel
-    root_states[:, 10:] = motion_base_ang_vel
-    robot.write_root_state_to_sim(root_states)
+    root_pose = robot.data.default_root_state[:, :7].clone()
+    root_pose[:, 0:3] = motion_base_pos
+    root_pose[:, :2] += scene.env_origins[:, :2]
+    root_pose[:, 3:7] = motion_base_rot
+    root_vel = torch.cat([motion_base_lin_vel, motion_base_ang_vel], dim=-1)
+    robot.write_root_link_pose_to_sim(root_pose)
+    robot.write_root_link_velocity_to_sim(root_vel)
 
     joint_pos = robot.data.default_joint_pos.clone()
     joint_vel = robot.data.default_joint_vel.clone()

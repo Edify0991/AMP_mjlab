@@ -40,5 +40,6 @@ rsl_rl/modules/transformer_bp.py
 rsl_rl/modules/transformer.py
 src/tasks/uni_track
 
-
-
+*.csv
+*.npy
+*.pkl

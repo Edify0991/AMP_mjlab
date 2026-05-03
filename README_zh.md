@@ -89,6 +89,83 @@ python scripts/train.py Unitree-G1-AMP-Flat --env.scene.num-envs=4096
 
 - `logs/rsl_rl/g1_amp_locomotion/<time_stamp_run>/`
 
+### 训练 Jingchu01 AMP
+
+Jingchu01 任务名：
+
+```bash
+python scripts/list_envs.py --keyword Jingchu01
+```
+
+当前注册了两个任务：
+
+- `Jingchu01-AMP-Flat`：平地训练，建议先从这里开始调通。
+- `Jingchu01-AMP-Rough`：粗糙地形训练，适合在平地策略稳定后继续训练或从头训练。
+
+训练前请确认运动数据已经转换到：
+
+- `src/assets/motions/jingchu01/amp/WalkandRun`
+- `src/assets/motions/jingchu01/amp/Recovery`
+
+单卡平地训练：
+
+```bash
+WARP_CACHE_PATH=/tmp/warp_cache python scripts/train.py Jingchu01-AMP-Flat \
+	--env.scene.num-envs=4096
+```
+
+先做小规模冒烟测试：
+
+```bash
+WARP_CACHE_PATH=/tmp/warp_cache python scripts/train.py Jingchu01-AMP-Flat \
+	--env.scene.num-envs=64 \
+	--agent.max-iterations=10 \
+	--agent.amp-num-preload-transitions=5000
+```
+
+粗糙地形训练：
+
+```bash
+WARP_CACHE_PATH=/tmp/warp_cache python scripts/train.py Jingchu01-AMP-Rough \
+	--env.scene.num-envs=4096
+```
+
+多 GPU 训练：
+
+```bash
+WARP_CACHE_PATH=/tmp/warp_cache python scripts/train.py Jingchu01-AMP-Flat \
+	--gpu-ids all \
+	--env.scene.num-envs=8192
+```
+
+如果只想使用指定 GPU，例如 0 和 1：
+
+```bash
+WARP_CACHE_PATH=/tmp/warp_cache python scripts/train.py Jingchu01-AMP-Flat \
+	--gpu-ids "[0,1]" \
+	--env.scene.num-envs=8192
+```
+
+断点续训：
+
+```bash
+WARP_CACHE_PATH=/tmp/warp_cache python scripts/train.py Jingchu01-AMP-Flat \
+	--env.scene.num-envs=4096 \
+	--agent.resume True \
+	--agent.load-run <run_dir> \
+	--agent.load-checkpoint model_<iter>.pt
+```
+
+Jingchu01 日志默认在：
+
+- `logs/rsl_rl/jingchu01_amp_locomotion/<time_stamp_run>/`
+
+查看 TensorBoard：
+
+```bash
+tensorboard --logdir logs/rsl_rl/jingchu01_amp_locomotion
+```
+
 ## 训练曲线说明（重要）
 
 - 在约 `2w` 轮（约 20k iterations）附近，策略通常会突然学会“跌倒后恢复”行为。
@@ -107,6 +184,30 @@ python scripts/play.py Unitree-G1-AMP-Rough \
 
 说明：训练与回放阶段都支持 ONNX 导出（默认开启）。
 
+Jingchu01 策略回放：
+
+```bash
+WARP_CACHE_PATH=/tmp/warp_cache python scripts/play.py Jingchu01-AMP-Flat \
+	--checkpoint-file logs/rsl_rl/jingchu01_amp_locomotion/<run_dir>/model_<iter>.pt \
+	--num-envs 1 \
+	--device cuda:0 \
+	--viewer native
+```
+
+无显示器或远程环境可以使用 Viser：
+
+```bash
+WARP_CACHE_PATH=/tmp/warp_cache python scripts/play.py Jingchu01-AMP-Flat \
+	--checkpoint-file logs/rsl_rl/jingchu01_amp_locomotion/<run_dir>/model_<iter>.pt \
+	--num-envs 1 \
+	--device cuda:0 \
+	--viewer viser
+```
+
+回放时默认导出 ONNX，路径位于：
+
+- `logs/rsl_rl/jingchu01_amp_locomotion/<run_dir>/export/`
+
 ## 运动数据准备
 
 仓库提供 CSV 到 NPZ 的转换脚本：
@@ -121,6 +222,68 @@ python scripts/csv_to_npz.py --help
 - 转换后 NPZ：`src/assets/motions/g1/amp/WalkandRun` 与 `src/assets/motions/g1/amp/Recovery`
 
 只要上述目录中存在可用 NPZ，训练配置会自动加载。
+
+### Jingchu01 PKL 到 NPZ
+
+Jingchu01 当前使用 MJCF 模型：
+
+- 训练模型文件：`/home/user/wmd/jingchu01/JC01-7DOF-URDF/JC01-URDF-18所/jingchu01.xml`
+- 场景检查文件：`/home/user/wmd/jingchu01/JC01-7DOF-URDF/JC01-URDF-18所/scene_jingchu01.xml`
+- 关节顺序文件：`src/assets/robots/jingchu01/gmr_pkl_joint_names_28.txt`
+- 训练环境入口：`src.tasks.amp_loco.config.jingchu01.env_cfgs:jingchu01_amp_flat_env_cfg`
+
+完整转换示例：
+
+```bash
+WARP_CACHE_PATH=/tmp/warp_cache python scripts/csv_to_npz.py \
+	--input-file motion_data_csv/amp/jingchu01/walk1_subject5.pkl \
+	--output-dir src/assets/motions/jingchu01/amp/WalkandRun \
+	--output-name walk1_subject5.npz \
+	--output-fps 50 \
+	--device cuda:0 \
+	--input-quat-format xyzw \
+	--joint-names-file src/assets/robots/jingchu01/gmr_pkl_joint_names_28.txt \
+	--env-cfg-entry-point src.tasks.amp_loco.config.jingchu01.env_cfgs:jingchu01_amp_flat_env_cfg
+```
+
+如果只是快速检查前几帧，可以加 `--line-range "(1,120)"`。
+
+### 转换时渲染
+
+离屏渲染并保存 mp4：
+
+```bash
+WARP_CACHE_PATH=/tmp/warp_cache python scripts/csv_to_npz.py \
+	--input-file motion_data_csv/amp/jingchu01/walk1_subject5.pkl \
+	--output-dir src/assets/motions/jingchu01/amp/WalkandRun \
+	--output-name walk1_subject5.npz \
+	--output-fps 50 \
+	--device cuda:0 \
+	--input-quat-format xyzw \
+	--joint-names-file src/assets/robots/jingchu01/gmr_pkl_joint_names_28.txt \
+	--env-cfg-entry-point src.tasks.amp_loco.config.jingchu01.env_cfgs:jingchu01_amp_flat_env_cfg \
+	--render True \
+	--render-backend offscreen \
+	--video-output src/assets/motions/jingchu01/amp/WalkandRun/walk1_subject5.mp4
+```
+
+打开 MuJoCo 窗口实时回放：
+
+```bash
+WARP_CACHE_PATH=/tmp/warp_cache python scripts/csv_to_npz.py \
+	--input-file motion_data_csv/amp/jingchu01/walk1_subject5.pkl \
+	--output-dir src/assets/motions/jingchu01/amp/WalkandRun \
+	--output-name walk1_subject5.npz \
+	--output-fps 50 \
+	--device cuda:0 \
+	--input-quat-format xyzw \
+	--joint-names-file src/assets/robots/jingchu01/gmr_pkl_joint_names_28.txt \
+	--env-cfg-entry-point src.tasks.amp_loco.config.jingchu01.env_cfgs:jingchu01_amp_flat_env_cfg \
+	--render True \
+	--render-backend window \
+	--window-realtime True \
+	--window-realtime-scale 1.0
+```
 
 ## 目录说明
 
@@ -143,3 +306,7 @@ python scripts/csv_to_npz.py --help
 
 - 感谢 [unitreerobotics/unitree_rl_mjlab](https://github.com/unitreerobotics/unitree_rl_mjlab) 项目的开源工作与启发。
 - 感谢 [Open-X-Humanoid/TienKung-Lab](https://github.com/Open-X-Humanoid/TienKung-Lab)，本项目在 rsl_rl 的 AMP 部分参考了该实现。
+
+WARP_CACHE_PATH=/tmp/warp_cache python scripts/train.py Jingchu01-AMP-Flat \
+  --gpu-ids "[0,1]" \
+  --env.scene.num-envs=4096
